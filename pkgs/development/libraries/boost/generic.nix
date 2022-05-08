@@ -85,9 +85,6 @@ let
     "binary-format=${if toString stdenv.hostPlatform.parsed.kernel.execFormat.name == "macho"
                      then "mach-o"
                      else toString stdenv.hostPlatform.parsed.kernel.execFormat.name}"
-    "target-os=${if toString stdenv.hostPlatform.parsed.kernel.name == "ios"
-                 then "iphone"
-                 else toString stdenv.hostPlatform.parsed.kernel.name}"
 
     # adapted from table in boost manual
     # https://www.boost.org/doc/libs/1_66_0/libs/context/doc/html/context/architectures.html
@@ -95,7 +92,13 @@ let
            else if stdenv.hostPlatform.isWindows then "ms"
            else if stdenv.hostPlatform.isMips then "o32"
            else "sysv"}"
-  ] ++ optional (link != "static") "runtime-link=${runtime-link}"
+  ] ++ optional (stdenv.hostPlatform != stdenv.buildPlatform && !stdenv.hostPlatform.isiOS)
+    # https://github.com/boostorg/build/issues/365
+    # set target os... but do not set it for iOS, because you end up having linker errors as shown here:
+    "target-os=${if toString stdenv.hostPlatform.parsed.kernel.name == "ios"
+                 then "ios"
+                 else toString stdenv.hostPlatform.parsed.kernel.name}"
+    ++ optional (link != "static") "runtime-link=${runtime-link}"
     ++ optional (variant == "release") "debug-symbols=off"
     ++ optional (toolset != null) "toolset=${toolset}"
     ++ optional (!enablePython) "--without-python"
@@ -152,7 +155,7 @@ stdenv.mkDerivation {
     EOF
   '' + optionalString (stdenv.hostPlatform != stdenv.buildPlatform) ''
     cat << EOF >> user-config.jam
-    using gcc : cross : ${stdenv.cc.targetPrefix}c++ ;
+    using ${if stdenv.cc.isClang then "clang" else "gcc"} : cross : ${stdenv.cc.targetPrefix}c++ ;
     EOF
     # Build b2 with buildPlatform CC/CXX.
     sed '2i export CC=$CC_FOR_BUILD; export CXX=$CXX_FOR_BUILD' \
@@ -183,6 +186,7 @@ stdenv.mkDerivation {
 
   buildPhase = ''
     runHook preBuild
+    echo == ./b2 ${b2Args}
     ./b2 ${b2Args}
     runHook postBuild
   '';
