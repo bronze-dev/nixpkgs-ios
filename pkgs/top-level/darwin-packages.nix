@@ -59,7 +59,6 @@ in
     buildIosSdk = buildPackages.darwin.iosSdkPkgs.sdk;
     targetIosSdkPkgs = targetPackages.darwin.iosSdkPkgs;
     xcode = darwin.xcode;
-    inherit (pkgs.llvmPackages) clang-unwrapped;
   };
 
   iproute2mac = callPackage ../os-specific/darwin/iproute2mac { };

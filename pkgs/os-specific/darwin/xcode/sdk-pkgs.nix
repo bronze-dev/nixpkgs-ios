@@ -1,8 +1,5 @@
 { targetPlatform
-, clang-unwrapped
-, binutils-unwrapped
 , runCommand
-
 , wrapBintoolsWith
 , wrapCCWith
 , buildIosSdk, targetIosSdkPkgs
@@ -21,7 +18,22 @@ rec {
     name = "ios-sdk";
     type = "derivation";
     outPath = xcode + "/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}${version}.sdk";
+    platform = targetPlatform.xcodePlatform;
+    version = targetPlatform.sdkVer;
+  };
 
+  clang-unwrapped = rec {
+    name = "clang-ios";
+    type = "derivation";
+    outPath = xcode + "/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr";
+    platform = targetPlatform.xcodePlatform;
+    version = targetPlatform.sdkVer;
+  };
+
+  binutils-unwrapped = rec {
+    name = "binutils-ios";
+    type = "derivation";
+    outPath = xcode + "/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr";
     platform = targetPlatform.xcodePlatform;
     version = targetPlatform.sdkVer;
   };
@@ -29,6 +41,7 @@ rec {
   binutils = wrapBintoolsWith {
     libc = targetIosSdkPkgs.libraries;
     bintools = binutils-unwrapped;
+    overrideTargetPrefix = "";
     extraBuildCommands = lib.optionalString (sdk.platform == "iPhoneSimulator") ''
       echo "-platform_version ios-sim ${minSdkVersion} ${sdk.version}" >> $out/nix-support/libc-ldflags
     '' + lib.optionalString (sdk.platform == "iPhoneOS") ''
@@ -40,11 +53,18 @@ rec {
     cc = clang-unwrapped;
     bintools = binutils;
     libc = targetIosSdkPkgs.libraries;
-    extraPackages = [ "${sdk}/System" ];
+    libcxx = targetIosSdkPkgs.libraries;
+    isClang = true;
+    # This was in an older version of this, but I am not sure what
+    # this is used for.
+    # extraPackages = [ "${sdk}/System" ];
     extraBuildCommands = ''
       tr '\n' ' ' < $out/nix-support/cc-cflags > cc-cflags.tmp
       mv cc-cflags.tmp $out/nix-support/cc-cflags
       echo "-target ${targetPlatform.config}" >> $out/nix-support/cc-cflags
+      echo "-isysroot ${sdk}" >> $out/nix-support/cc-cflags
+      echo "-isystem ${sdk}/usr/include/c++/v1" >> $out/nix-support/cc-cflags
+      echo "-L${sdk}/usr/lib" >> $out/nix-support/cc-ldflags
       echo "-isystem ${sdk}/usr/include${lib.optionalString (lib.versionAtLeast "10" sdk.version) " -isystem ${sdk}/usr/include/c++/4.2.1/ -stdlib=libstdc++"}" >> $out/nix-support/cc-cflags
     '' + lib.optionalString (sdk.platform == "iPhoneSimulator") ''
       echo "-mios-simulator-version-min=${minSdkVersion}" >> $out/nix-support/cc-cflags

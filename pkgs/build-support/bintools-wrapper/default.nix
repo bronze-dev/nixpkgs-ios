@@ -8,6 +8,7 @@
 { name ? ""
 , lib
 , stdenvNoCC
+, overrideTargetPrefix ? null
 , bintools ? null, libc ? null, coreutils ? null, shell ? stdenvNoCC.shell, gnugrep ? null
 , nativeTools, noLibc ? false, nativeLibc, nativePrefix ? ""
 , propagateDoc ? bintools != null && bintools ? man
@@ -32,8 +33,11 @@ let
   #
   # TODO(@Ericson2314) Make unconditional, or optional but always true by
   # default.
-  targetPrefix = lib.optionalString (targetPlatform != hostPlatform)
-                                        (targetPlatform.config + "-");
+  targetPrefix = if overrideTargetPrefix != null
+                 then overrideTargetPrefix
+                 else lib.optionalString
+                   (targetPlatform != hostPlatform)
+                   (targetPlatform.config + "-");
 
   bintoolsVersion = lib.getVersion bintools;
   bintoolsName = lib.removePrefix targetPrefix (lib.getName bintools);
