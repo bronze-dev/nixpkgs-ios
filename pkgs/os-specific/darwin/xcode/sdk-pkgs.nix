@@ -43,7 +43,7 @@ rec {
     bintools = binutils-unwrapped;
     overrideTargetPrefix = "";
     extraBuildCommands = lib.optionalString (sdk.platform == "iPhoneSimulator") ''
-      echo "-platform_version ios-sim ${minSdkVersion} ${sdk.version}" >> $out/nix-support/libc-ldflags
+      echo "-platform_version ios-simulator ${minSdkVersion} ${sdk.version}" >> $out/nix-support/libc-ldflags
     '' + lib.optionalString (sdk.platform == "iPhoneOS") ''
       echo "-platform_version ios ${minSdkVersion} ${sdk.version}" >> $out/nix-support/libc-ldflags
     '';
